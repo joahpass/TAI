@@ -5,6 +5,7 @@
     <LangVersion>Latest</LangVersion>
     <OutputType>Exe</OutputType>
     <AssemblyVersion>0.0.18</AssemblyVersion>
+    <PlcTutorEngineeringProject Condition="'$(PlcTutorEngineeringProject)' == ''">$(MSBuildThisFileDirectory)..\PlcTutor.Engineering\PlcTutor.Engineering.csproj</PlcTutorEngineeringProject>
     <TiaMajorVersion Condition="'$(TiaMajorVersion)' == ''">21</TiaMajorVersion>
     <OutputPath>bin\V$(TiaMajorVersion)\$(Configuration)\</OutputPath>
     <IntermediateOutputPath>obj\V$(TiaMajorVersion)\$(Configuration)\</IntermediateOutputPath>
@@ -22,7 +23,7 @@
     <PackageReference Include="Siemens.Collaboration.Net.TiaPortal.Packages.Openness" Version="$(OpennessPackageVersion)" Condition="'$(TiaMajorVersion)' == '21'" />
   </ItemGroup>
   <ItemGroup Condition="'$(TiaMajorVersion)' == '21'">
-    <ProjectReference Include="C:\Users\xu peng kun\Documents\西门子PLC\desktop\PlcTutor.Engineering\PlcTutor.Engineering.csproj" />
+    <ProjectReference Include="$(PlcTutorEngineeringProject)" />
   </ItemGroup>
   <ItemGroup>
     <Reference Include="System.Management">
@@ -43,5 +44,6 @@
   </ItemGroup>
   <Target Name="ValidateTiaMajorVersion" BeforeTargets="BeforeBuild">
     <Error Condition="'$(TiaMajorVersion)' != '19' AND '$(TiaMajorVersion)' != '21'" Text="TiaMajorVersion must be 19 or 21." />
+    <Error Condition="'$(TiaMajorVersion)' == '21' AND !Exists('$(PlcTutorEngineeringProject)')" Text="V21 requires PlcTutor.Engineering source. Set -p:PlcTutorEngineeringProject=path/to/PlcTutor.Engineering.csproj. See README.md." />
   </Target>
 </Project>

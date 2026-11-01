@@ -36,7 +36,7 @@ npm start
 
 ## 构建
 
-保留 `tai/` 与 `mcp-v21/` 相邻布局。MCP 需要两版对应 Siemens SDK，这些 SDK 不随仓库和安装包分发。参见 [MCP 项目配置](mcp-v21/TiaMcpServer.csproj)。
+保留 `tai/` 与 `mcp-v21/` 相邻布局。MCP 需要对应 Siemens Engineering SDK，这些 SDK 不随仓库和安装包分发。参见 [MCP 项目配置](mcp-v21/TiaMcpServer.csproj)。V21 后端还引用独立的 `PlcTutor.Engineering` 项目；其源码未纳入本仓库，默认查找相邻目录，也可构建时传入 `-p:PlcTutorEngineeringProject=<项目完整路径>`。使用现成安装包无需单独准备该项目。
 
 ```bash
 cd tai/desktop
@@ -58,3 +58,12 @@ pwsh -NoProfile -File tai/installer/Build.ps1 -DesktopDir <desktop-release-dir> 
 [向导检查](tai/installer/Test-Wizard.ps1) 覆盖页面导航、最高版本选择、进度与失败重试。[隔离安装检查](tai/installer/Test-Installer-Offline.ps1) 使用临时目录及 SDK/验证器替身，覆盖安装、升级、版本切换和卸载。生产安装器保留真实组件预检；隔离检查不代表真实博途联调已完成。
 
 本次发布验证采用离线测试。真实 TIA 测试脚本需确认对应工程和会话范围后执行。
+
+## 通用版可行性
+
+通用版采用一个安装包、统一版本资料与分代适配器。安装器、服务端和设置页共用版本 manifest，记录 SDK 布局、程序集身份、后端路径、工具能力与验证等级。自动选择顺序为：发现全部安装版本 → 匹配包内适配器与 SDK 契约 → 选择最高匹配版本；更高版本缺适配器时显示具体原因，并继续考虑较低匹配版本。
+
+当前 0.10.0 的适配器为 V19 / V21。后续 V17、V18、V20 作为候选，不把版本号放开等同于支持。V19 反射桥适合抽为按版本参数化的旧版适配器，需同步参数化程序集身份、组件及工程扩展名；V21 使用拆分 SDK，保留独立映射。V20 需要先核对真实 SDK 布局，当前安装器与解析器对其目录代际的判断存在差异。
+
+通用版将分别显示“检测到安装”“适配器已提供”“SDK 契约通过”“协议通过”“指定工具工程实测通过”。离线矩阵覆盖 17/18/19/20/21 与未知未来版本的共存、缺适配器、SDK 错配及自动回退；再逐版验证真实 SDK 和一次性工程。新版本以新增 profile 扩展，避免在各处维护两项版本数组。
+
