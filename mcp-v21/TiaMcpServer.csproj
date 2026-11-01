@@ -1,0 +1,47 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <Nullable>enable</Nullable>
+    <LangVersion>Latest</LangVersion>
+    <OutputType>Exe</OutputType>
+    <AssemblyVersion>0.0.18</AssemblyVersion>
+    <TiaMajorVersion Condition="'$(TiaMajorVersion)' == ''">21</TiaMajorVersion>
+    <OutputPath>bin\V$(TiaMajorVersion)\$(Configuration)\</OutputPath>
+    <IntermediateOutputPath>obj\V$(TiaMajorVersion)\$(Configuration)\</IntermediateOutputPath>
+    <DefineConstants Condition="'$(TiaMajorVersion)' == '19'">$(DefineConstants);TIA_V19</DefineConstants>
+    <OpennessPackageVersion Condition="'$(TiaMajorVersion)' == '19'">19.0.1725520202</OpennessPackageVersion>
+    <OpennessPackageVersion Condition="'$(TiaMajorVersion)' == '21'">21.0.1765349347</OpennessPackageVersion>
+    <SiemensEngineeringDirectoryName Condition="'$(TiaMajorVersion)' == '19'">V19</SiemensEngineeringDirectoryName>
+    <SiemensEngineeringDirectoryName Condition="'$(TiaMajorVersion)' == '21'">V21\net48</SiemensEngineeringDirectoryName>
+  </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Include="Microsoft.Extensions.Hosting" Version="10.0.0-preview.4.25258.110" />
+    <PackageReference Include="ModelContextProtocol" Version="0.3.0-preview.4" />
+    <PackageReference Include="Siemens.Collaboration.Net.OperatingSystem.Windows" Version="3.0.1725521661" />
+    <PackageReference Include="Siemens.Collaboration.Net.TiaPortal.Openness.Resolver" Version="2.0.1765367256" />
+    <PackageReference Include="Siemens.Collaboration.Net.TiaPortal.Packages.Openness" Version="$(OpennessPackageVersion)" Condition="'$(TiaMajorVersion)' == '21'" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TiaMajorVersion)' == '21'">
+    <ProjectReference Include="C:\Users\xu peng kun\Documents\西门子PLC\desktop\PlcTutor.Engineering\PlcTutor.Engineering.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <Reference Include="System.Management">
+      <HintPath>C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.8\System.Management.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="tests\**" />
+    <None Include="tests\**" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TiaMajorVersion)' == '19'">
+    <!-- V19 uses a bounded public-API reflection adapter: no V21 binary references. -->
+    <Compile Remove="**\*.cs" />
+    <Compile Include="CliOptions.cs;Siemens\Engineering.cs;Compatibility\**\*.cs" />
+  </ItemGroup>
+  <ItemGroup Condition="'$(TiaMajorVersion)' != '19'">
+    <Compile Remove="Compatibility\**" />
+  </ItemGroup>
+  <Target Name="ValidateTiaMajorVersion" BeforeTargets="BeforeBuild">
+    <Error Condition="'$(TiaMajorVersion)' != '19' AND '$(TiaMajorVersion)' != '21'" Text="TiaMajorVersion must be 19 or 21." />
+  </Target>
+</Project>

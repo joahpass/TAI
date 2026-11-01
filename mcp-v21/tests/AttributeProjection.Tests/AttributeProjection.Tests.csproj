@@ -1,0 +1,17 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>net48;net9.0</TargetFrameworks>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+  <ItemGroup Condition="'$(TargetFramework)' == 'net48'">
+    <PackageReference Include="System.Text.Json" Version="10.0.0-preview.4.25258.110" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Include="../../ModelContextProtocol/SiemensAttributeProjection.cs" Link="SiemensAttributeProjection.cs" />
+    <Compile Include="../../ModelContextProtocol/AttributeProjection.cs" Link="AttributeProjection.cs" />
+    <Compile Include="../../ModelContextProtocol/Types.cs" Link="Types.cs" />
+    <Compile Include="../../ModelContextProtocol/Responses.cs" Link="Responses.cs" />
+  </ItemGroup>
+</Project>

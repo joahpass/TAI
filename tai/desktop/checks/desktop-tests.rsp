@@ -1,0 +1,6 @@
+@checks/desktop-build.rsp
+/define:DESKTOP_ENTRY_TESTS
+/target:exe
+/main:TAI.Desktop.DesktopEntryChecks
+/out:checks/build/DesktopEntryChecks.exe
+checks/DesktopEntryChecks.cs

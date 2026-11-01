@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Publisher configuration for the TAI TIA Portal V21 Add-In.
+     Schema: E:\TIA Portal\Portal V21\PublicAPI\V21\Siemens.Engineering.AddIn.Publisher.xsd
+     Paths are relative to this file. -->
+<PackageConfiguration xmlns="http://www.siemens.com/automation/Openness/AddIn/Publisher/V21">
+  <Author>TAI</Author>
+  <Description>TAI 工程助手：在项目树右键菜单中打开独立的 TAI 助手窗口（%LOCALAPPDATA%\Programs\TAI\TAI.Desktop.exe）。</Description>
+  <AddInVersion>0.1.0</AddInVersion>
+  <Product>
+    <Name>TAI 工程助手</Name>
+    <Id>TAI.TiaAddIn</Id>
+    <Version>0.1.0</Version>
+  </Product>
+  <FeatureAssembly>
+    <AssemblyInfo>
+      <Assembly>..\src\TAI.TiaAddIn\bin\x64\Release\TAI.TiaAddIn.dll</Assembly>
+    </AssemblyInfo>
+  </FeatureAssembly>
+  <RequiredPermissions>
+    <TIAPermissions>
+      <TIA.ReadOnly />
+    </TIAPermissions>
+    <SecurityPermissions>
+      <Siemens.Engineering.AddIn.Permissions.ProcessStartPermission>
+        <Comment>Starts the separately installed TAI desktop host (TAI.Desktop.exe).</Comment>
+      </Siemens.Engineering.AddIn.Permissions.ProcessStartPermission>
+      <System.Security.Permissions.EnvironmentPermission>
+        <Comment>Reads LOCALAPPDATA to locate the per-user TAI installation.</Comment>
+      </System.Security.Permissions.EnvironmentPermission>
+      <System.Security.Permissions.FileIOPermission>
+        <Comment>Checks that %LOCALAPPDATA%\Programs\TAI\TAI.Desktop.exe exists before launching.</Comment>
+      </System.Security.Permissions.FileIOPermission>
+    </SecurityPermissions>
+  </RequiredPermissions>
+</PackageConfiguration>

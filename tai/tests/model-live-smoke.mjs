@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+import path from 'node:path';
+import assert from 'node:assert/strict';
+import { completion } from '../server/model.mjs';
+const directory=process.env.TAI_DATA_DIR||path.join(process.env.LOCALAPPDATA,'TAI');
+const config=JSON.parse(await fs.readFile(path.join(directory,'config.json'),'utf8'));
+const response=await completion({...config,maxTokens:256},[{role:'user',content:'Connection check. Reply with exactly TAI_OK and nothing else.'}],[],AbortSignal.timeout(45000));
+assert.equal(response.content.trim(),'TAI_OK','Configured model returned the expected connectivity marker');
+assert.equal((response.tool_calls??[]).length,0);
+console.log('PASS: configured model returned TAI_OK; no engineering data or tools were sent.');

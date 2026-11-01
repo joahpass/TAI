@@ -1,0 +1,11 @@
+import assert from 'node:assert/strict';
+import path from 'node:path';
+import { pathToFileURL } from 'node:url';
+const root=path.join(process.env.LOCALAPPDATA,'Programs','TAI');
+const source=process.env.TAI_TEST_SOURCE ? new URL('../server/agent.mjs',import.meta.url) : pathToFileURL(path.join(root,'app','server','agent.mjs'));
+const {artifact}=await import(source);
+const result=await artifact(path.join(process.env.LOCALAPPDATA,'TAI','artifacts'),'TAI_ReadArtifact',{name:process.env.TAI_TEST_ARTIFACT||'led16/src/Main.s7dcl'});
+assert.ok(result.content[0].text.length>0);
+const info=JSON.parse(result.content[1].text);
+assert.match(info.sha256,/^[a-f0-9]{64}$/);
+console.log(`PASS: installed artifact reader opened existing nested document (${info.bytes} bytes); no file edited.`);

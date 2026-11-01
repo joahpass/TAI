@@ -1,0 +1,23 @@
+DesktopDir=E:/PLC SIM/tai/desktop/artifacts/release-0.10.0-20261101T150916-1567
+EvidenceDir=E:/PLC SIM/tai/desktop/artifacts/evidence-0.10.0-20261101T150916-1567
+Commands from desktop in Windows bash:
+  bash build-release.sh --online
+  bash build-release.sh --offline
+Requires .NET SDK (tested 9.0.311), bash, PowerShell 7.
+Online restores into desktop/.packages; offline restricts restore feeds to that
+populated local cache. Each run creates fresh release/evidence directories and
+preserves previous outputs. Performs SDK Release Rebuild and artifact verification.
+Standard network restore passed; standard build passed, zero warnings/errors.
+Offline restore and fresh Rebuild also passed, zero warnings/errors; EXE/PDB hashes
+match the first build. Assembly/FileVersion 0.10.0.0, ProductVersion 0.10.0.
+Embedded manifest identity 0.10.0.0, asInvoker, PerMonitorV2. Target net48/x64.
+WebView2 managed DLLs and x64 loader 1.0.3537.50 included. Evergreen browser runtime
+remains the installer's prerequisite. Exactly seven production sources compiled;
+checks sources/binaries excluded. verification.json records versions and all file
+hashes; build.log/build.binlog, restore.log, compile-items.json and extracted
+embedded.manifest.xml provide evidence.
+EXE SHA256: E50099667DC9DC2D4D6D570037F4555FEFE33A9D0FBF4FEC4988910C2E292CEA
+Original project/manifest retained under backups/pre-0.10.0 as text backups.
+No production C# or installer changes, installed-version changes, TIA/MCP/desktop
+startup, real TIA smoke, commit or push. Historical checks/README.md cache failure
+is resolved for this release by normal restore; check binaries are not used.

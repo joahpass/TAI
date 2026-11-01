@@ -1,0 +1,36 @@
+import test from 'node:test';
+import assert from 'node:assert/strict';
+import { closeTab, editDraft, openTab, restoreView, sortedDesigns } from '../src/workspace/state.js';
+import { surfaceFor } from '../src/lib/route.js';
+
+test('工作台、紧凑助手与原配置入口兼容', () => {
+  assert.equal(surfaceFor('/workspace'), 'workspace');
+  assert.equal(surfaceFor('/workspace/'), 'workspace');
+  assert.equal(surfaceFor('/assistant'), 'assistant');
+  assert.equal(surfaceFor('/settings'), 'console');
+  assert.equal(surfaceFor('/'), 'console');
+});
+test('切换与关闭标签保留各设计的草稿与模式，重新打开恢复', () => {
+  let view = openTab(restoreView(null), 'a');
+  view = editDraft(view, 'a', { text: '电机控制', mode: 'write' });
+  view = openTab(view, 'b');
+  view = editDraft(view, 'b', { text: '检查画面', mode: 'read' });
+  view = closeTab(view, 'a');
+  assert.equal(view.activeId, 'b');
+  view = openTab(view, 'a');
+  assert.deepEqual(view.drafts.a, { text: '电机控制', mode: 'write' });
+  assert.deepEqual(view.drafts.b, { text: '检查画面', mode: 'read' });
+  assert.equal(closeTab(view, 'a').activeId, 'b');
+  assert.equal(closeTab(closeTab(view, 'a'), 'b').activeId, '');
+});
+test('窗口恢复去重标签，修复过期激活项与主题', () => {
+  const view = restoreView({ tabs: ['b', 'a', 'b', null], activeId: 'missing', theme: 'invalid', positions: { a: 42 } });
+  assert.deepEqual(view.tabs, ['b', 'a']); assert.equal(view.activeId, 'b');
+  assert.equal(view.theme, 'light'); assert.equal(view.positions.a, 42);
+  assert.equal(restoreView(JSON.parse(JSON.stringify(editDraft(view, 'b', { text: '保留' })))).drafts.b.text, '保留');
+});
+test('设计置顶优先，其余按更新时间排序且保留输入顺序对象', () => {
+  const items = [{ id: 'a', updatedAt: '2026-01-03' }, { id: 'b', pinned: true, updatedAt: '2026-01-01' }, { id: 'c', updatedAt: '2026-01-02' }];
+  assert.deepEqual(sortedDesigns(items).map(d => d.id), ['b', 'a', 'c']);
+  assert.deepEqual(items.map(d => d.id), ['a', 'b', 'c']);
+});

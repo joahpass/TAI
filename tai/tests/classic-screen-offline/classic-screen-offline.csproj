@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <OutputType>Exe</OutputType>
+    <LangVersion>latest</LangVersion>
+    <Nullable>enable</Nullable>
+    <EnableDefaultCompileItems>false</EnableDefaultCompileItems>
+    <SiemensSdk>E:/TIA Portal/Portal V21/PublicAPI/V21/net48</SiemensSdk>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="Program.cs" />
+    <Compile Include="../../../mcp-v21/Siemens/ClassicScreenContent.cs" Link="ClassicScreenContent.cs" />
+    <Reference Include="Siemens.Engineering.Base"><HintPath>$(SiemensSdk)/Siemens.Engineering.Base.dll</HintPath></Reference>
+    <Reference Include="Siemens.Engineering.WinCC"><HintPath>$(SiemensSdk)/Siemens.Engineering.WinCC.dll</HintPath></Reference>
+  </ItemGroup>
+</Project>

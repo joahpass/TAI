@@ -1,0 +1,10 @@
+import fs from 'node:fs/promises';
+const file=new URL('../server/agent.mjs',import.meta.url);
+let text=await fs.readFile(file,'utf8');
+const start=text.indexOf('    const messages=[{role:');
+const end=text.indexOf('\n    for(let step=',start);
+if(start<0||end<0)throw new Error('Prompt block not found');
+text=text.slice(0,start)+"    const messages=[{role:'system',content:config.systemPrompt || defaultSystemPrompt},{role:'system',content:`运行上下文：模式 ${mode}；TIA 已连接 ${mcp.connected}；工件目录 ${artifactDirectory}。工具由运行时提供。未连接时先连接再查询；旧工具记录已省略，必要时查询当前状态。`},...history,{role:'user',content:message}];"+text.slice(end);
+text=text.replace('for(let step=0;step<config.maxSteps;step++)','for(let step=0;;step++)').replace('模型处理中 · ${step+1}/${config.maxSteps}','模型处理中 · 第 ${step+1} 轮');
+text=text.split('\n').filter(line=>!line.includes('if(step===config.maxSteps-1)')).join('\n');
+await fs.writeFile(file,text);

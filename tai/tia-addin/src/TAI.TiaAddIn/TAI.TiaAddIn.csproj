@@ -1,0 +1,52 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!--
+    TAI TIA Portal V21 Add-In (Project tree context menu).
+    net48 / x64 class library compiled against the installed TIA Portal V21 Public API.
+    Siemens assemblies are provided by the TIA Portal Add-In host at runtime, so they
+    are referenced with Private=false and are NOT packaged into the .addin.
+  -->
+  <PropertyGroup>
+    <TargetFramework>net48</TargetFramework>
+    <PlatformTarget>x64</PlatformTarget>
+    <Platforms>x64</Platforms>
+    <OutputType>Library</OutputType>
+    <AssemblyName>TAI.TiaAddIn</AssemblyName>
+    <RootNamespace>TAI.TiaAddIn</RootNamespace>
+    <LangVersion>7.3</LangVersion>
+    <Nullable>disable</Nullable>
+    <Version>0.1.0</Version>
+    <AssemblyVersion>0.1.0.0</AssemblyVersion>
+    <FileVersion>0.1.0.0</FileVersion>
+    <Company>TAI</Company>
+    <Product>TAI 工程助手</Product>
+    <GenerateDocumentationFile>false</GenerateDocumentationFile>
+    <AppendTargetFrameworkToOutputPath>false</AppendTargetFrameworkToOutputPath>
+    <AppendRuntimeIdentifierToOutputPath>false</AppendRuntimeIdentifierToOutputPath>
+    <DebugType>full</DebugType>
+    <TreatWarningsAsErrors>true</TreatWarningsAsErrors>
+    <!-- Overridable on the command line: -p:TiaPublicApiDir=... -->
+    <TiaPublicApiDir Condition="'$(TiaPublicApiDir)' == ''">E:\TIA Portal\Portal V21\PublicAPI\V21\net48</TiaPublicApiDir>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Reference Include="Siemens.Engineering.AddIn.Base">
+      <HintPath>$(TiaPublicApiDir)\Siemens.Engineering.AddIn.Base.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Siemens.Engineering.AddIn.Utilities">
+      <HintPath>$(TiaPublicApiDir)\Siemens.Engineering.AddIn.Utilities.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Siemens.Engineering.AddIn.Permissions">
+      <HintPath>$(TiaPublicApiDir)\Siemens.Engineering.AddIn.Permissions.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="Siemens.Engineering.Base">
+      <HintPath>$(TiaPublicApiDir)\Siemens.Engineering.Base.dll</HintPath>
+      <Private>false</Private>
+    </Reference>
+    <Reference Include="System.Drawing" />
+  </ItemGroup>
+
+</Project>
