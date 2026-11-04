@@ -1,11 +1,15 @@
 import { useEffect, useState } from 'react';
 import { CircleCheck, FlaskConical, KeyRound, LoaderCircle, Save, TriangleAlert, X } from 'lucide-react';
 import { api } from '../api.js';
+import ModelInput, { useModelCatalog } from './ModelInput.jsx';
+import { REASONING_OPTIONS } from '../lib/taskOptions.js';
 import UpdateSection from './UpdateSection.jsx';
 
 const PRESET_URL = { openai: 'https://api.openai.com/v1', anthropic: 'https://api.anthropic.com' };
 
 export default function Settings({ onClose, onSaved, running }) {
+  const models = useModelCatalog();
+  const [savedService, setSavedService] = useState(null);
   const [form, setForm] = useState(null);
   const [apiKey, setApiKey] = useState('');
   const [clearKey, setClearKey] = useState(false);
@@ -16,7 +20,7 @@ export default function Settings({ onClose, onSaved, running }) {
   useEffect(() => {
     api
       .getConfig()
-      .then(setForm)
+      .then(c => { setForm({ ...c, reasoningEffort: c.reasoningEffort || 'auto' }); setSavedService(c); })
       .catch((e) => setMsg({ tone: 'err', text: e.message }));
   }, []);
 
@@ -39,6 +43,7 @@ export default function Settings({ onClose, onSaved, running }) {
         provider: form.provider,
         baseUrl: form.baseUrl,
         model: form.model,
+        reasoningEffort: form.reasoningEffort || 'auto',
         temperature: Number(form.temperature),
         maxTokens: Number(form.maxTokens),
         mcpPath: form.mcpPath,
@@ -48,7 +53,7 @@ export default function Settings({ onClose, onSaved, running }) {
       if (clearKey) body.clearApiKey = true;
       else if (apiKey.trim()) body.apiKey = apiKey.trim();
       const next = await api.putConfig(body);
-      setForm(next);
+      setForm(next); setSavedService(next); models.configure(next);
       setApiKey('');
       setClearKey(false);
       setDirty(false);
@@ -121,9 +126,10 @@ export default function Settings({ onClose, onSaved, running }) {
                 </div>
                 <div className="field">
                   <label htmlFor="s-model">模型名称</label>
-                  <input id="s-model" value={form.model} onChange={(e) => set('model', e.target.value)} placeholder="例如 gpt-4o / claude-sonnet-4 / deepseek-chat" />
+                  <ModelInput id="s-model" label="默认模型" value={form.model} onChange={e => set('model', e.target.value)} {...models} contextChanged={form.provider !== savedService?.provider || form.baseUrl !== savedService?.baseUrl || Boolean(apiKey.trim()) || clearKey} />
                 </div>
               </div>
+              <div className="field"><label htmlFor="s-effort">思考程度</label><select id="s-effort" aria-label="默认思考程度" value={form.reasoningEffort || 'auto'} onChange={e => set('reasoningEffort', e.target.value)}>{REASONING_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select><span className="hint">模型默认不附思考参数；协议或模型不支持时返回服务错误，不会静默降级。</span></div>
               <div className="field">
                 <label htmlFor="s-url">接口地址</label>
                 <input id="s-url" value={form.baseUrl} onChange={(e) => set('baseUrl', e.target.value)} placeholder="https://api.openai.com/v1" />

@@ -52,7 +52,7 @@ test('project and conversation metadata contracts, conflicts and summaries',asyn
  assert.equal((await request(`/api/conversations/${c.id}`,'PUT',{revision:2,archivedAt:null,projectId:'default'})).status,200);
  assert.equal((await request(`/api/projects/${p.id}`,'PUT',{revision:1,name:'Project B'})).data().revision,2);
  assert.equal((await request(`/api/projects/${p.id}`,'PUT',{revision:1,name:'Stale'})).status,409);
- assert.equal((await request(`/api/projects/${p.id}`,'DELETE')).status,404);
+ assert.equal((await request(`/api/projects/${p.id}`,'DELETE')).status,409);
 });
 
 test('binding is verified against live GetState without starting TIA',async t=>{
@@ -99,8 +99,8 @@ test('active task, revision updates while running, related locks and taskId canc
  const current=(await request(`/api/conversations/${c.id}`)).data();assert.equal((await request(`/api/conversations/${c.id}`,'PUT',{revision:current.revision,title:'Live rename',pinned:true})).status,200);
  assert.equal((await request('/api/projects/default','PUT',{revision:1,name:'Live project'})).status,200);
  const moved=(await request(`/api/conversations/${c.id}`)).data();assert.equal((await request(`/api/conversations/${c.id}`,'PUT',{revision:moved.revision,projectId:'bad'})).status,409);
- assert.equal((await request(`/api/conversations/${c.id}`,'DELETE')).status,409);
- assert.equal((await request(`/api/conversations/${other.id}`,'DELETE')).status,200);
+ assert.equal((await request(`/api/conversations/${c.id}?revision=${moved.revision}`,'DELETE')).status,409);
+ assert.equal((await request(`/api/conversations/${other.id}?revision=${other.revision}`,'DELETE')).status,200);
  assert.equal((await request('/api/projects/default','PUT',{revision:2,tiaProjectPath:'C:/X'})).status,409);
  assert.equal((await request('/api/chat/cancel','POST',{taskId:'stale'})).status,409);assert.ok(app.activeTask);
  assert.equal((await request('/api/chat/cancel','POST',{taskId:task.taskId})).status,200);await chat;

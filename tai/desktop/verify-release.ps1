@@ -1,6 +1,6 @@
 param(
     [Parameter(Mandatory=$true)][string]$DesktopDir,
-    [string]$EvidenceDir = (Join-Path $PSScriptRoot 'artifacts/evidence-0.10.0')
+    [string]$EvidenceDir = (Join-Path $PSScriptRoot 'artifacts/evidence-0.11.0')
 )
 $ErrorActionPreference = 'Stop'
 $DesktopDir = (Resolve-Path $DesktopDir).Path
@@ -30,9 +30,9 @@ public static class DesktopResources {
 $exe = Join-Path $DesktopDir 'TAI.Desktop.exe'
 $assembly = [Reflection.AssemblyName]::GetAssemblyName($exe)
 $version = [Diagnostics.FileVersionInfo]::GetVersionInfo($exe)
-Assert ($assembly.Version.ToString() -eq '0.10.0.0') 'Assembly version mismatch'
-Assert ($version.FileVersion -eq '0.10.0.0') 'File version mismatch'
-Assert ($version.ProductVersion -eq '0.10.0') 'Product version mismatch'
+Assert ($assembly.Version.ToString() -eq '0.11.0.0') 'Assembly version mismatch'
+Assert ($version.FileVersion -eq '0.11.0.0') 'File version mismatch'
+Assert ($version.ProductVersion -eq '0.11.0') 'Product version mismatch'
 Assert ($version.ProductName -eq 'TAI 工程助手') 'Product name mismatch'
 Assert ($version.FileDescription -eq 'TAI 工程助手桌面窗口') 'Assembly title mismatch'
 Assert ($version.CompanyName -eq 'TAI') 'Company mismatch'
@@ -51,7 +51,7 @@ try {
     $ns = [Xml.XmlNamespaceManager]::new($manifest.NameTable)
     $ns.AddNamespace('v1','urn:schemas-microsoft-com:asm.v1')
     $ns.AddNamespace('v3','urn:schemas-microsoft-com:asm.v3')
-    Assert ($manifest.SelectSingleNode('/v1:assembly/v1:assemblyIdentity', $ns).version -eq '0.10.0.0') 'Manifest identity mismatch'
+    Assert ($manifest.SelectSingleNode('/v1:assembly/v1:assemblyIdentity', $ns).version -eq '0.11.0.0') 'Manifest identity mismatch'
     Assert ($manifest.SelectSingleNode('//v3:requestedExecutionLevel', $ns).level -eq 'asInvoker') 'Execution level mismatch'
     Assert ($manifestText.Contains('PerMonitorV2')) 'DPI manifest missing'
     [IO.File]::WriteAllText((Join-Path $EvidenceDir 'embedded.manifest.xml'), $manifestText)
@@ -86,6 +86,6 @@ if (Test-Path -LiteralPath $compileItemsPath) {
 $hashes = @(Get-ChildItem -Path $DesktopDir -File -Recurse | Sort-Object FullName | ForEach-Object {
     [ordered]@{ File=[IO.Path]::GetRelativePath($DesktopDir,$_.FullName); SHA256=(Get-FileHash -LiteralPath $_.FullName -Algorithm SHA256).Hash; Bytes=$_.Length }
 })
-$report = [ordered]@{ DesktopDir=$DesktopDir; Result='PASS'; AssemblyVersion=$assembly.Version.ToString(); FileVersion=$version.FileVersion; ProductVersion=$version.ProductVersion; Product=$version.ProductName; Title=$version.FileDescription; Company=$version.CompanyName; Manifest='RT_MANIFEST #1: 0.10.0.0, asInvoker, PerMonitorV2'; Target='net48 / x64'; CompileSources=$compileSources; Dependencies=@($dependencies); Files=$hashes; RuntimeExecution='None: resource inspection only; no TIA, MCP or application startup' }
+$report = [ordered]@{ DesktopDir=$DesktopDir; Result='PASS'; AssemblyVersion=$assembly.Version.ToString(); FileVersion=$version.FileVersion; ProductVersion=$version.ProductVersion; Product=$version.ProductName; Title=$version.FileDescription; Company=$version.CompanyName; Manifest='RT_MANIFEST #1: 0.11.0.0, asInvoker, PerMonitorV2'; Target='net48 / x64'; CompileSources=$compileSources; Dependencies=@($dependencies); Files=$hashes; RuntimeExecution='None: resource inspection only; no TIA, MCP or application startup' }
 $report | ConvertTo-Json -Depth 8 | Set-Content -Encoding utf8 (Join-Path $EvidenceDir 'verification.json')
 $report | ConvertTo-Json -Depth 8

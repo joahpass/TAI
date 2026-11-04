@@ -8,8 +8,8 @@ case "$mode" in
   *) echo 'Usage: bash build-release.sh [--online|--offline]' >&2; exit 2 ;;
 esac
 stamp="$(date -u +%Y%m%dT%H%M%S)-$$"
-output="artifacts/release-0.10.0-$stamp"
-evidence="artifacts/evidence-0.10.0-$stamp"
+output="artifacts/release-0.11.0-$stamp"
+evidence="artifacts/evidence-0.11.0-$stamp"
 # Every invocation creates a fresh output tree; prior releases and bin/Release stay intact.
 mkdir -p -- "$output" "$evidence"
 restore_args=(restore TAI.Desktop.csproj --packages .packages -p:NuGetAudit=false --disable-parallel)

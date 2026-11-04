@@ -120,7 +120,7 @@ test('real HTTP server smoke (isolated data, no TIA/MCP)', { timeout: 30000 }, a
     assert.deepEqual((await request(`/api/conversations/${conversation.id}`)).json(), conversation);
     assert.equal((await request('/api/conversations')).json().conversations.length, 1);
     const other = (await request('/api/conversations', 'POST', {})).json();
-    assert.equal((await request(`/api/conversations/${other.id}`, 'DELETE')).status, 200);
+    assert.equal((await request(`/api/conversations/${other.id}?revision=${other.revision}`, 'DELETE')).status, 200);
     assert.equal((await request(`/api/conversations/${other.id}`)).status, 400);
     const saved = JSON.parse(await readFile(path.join(directory, 'conversations.json'), 'utf8'));
     assert.deepEqual(saved.map(c => c.id), [conversation.id]);
@@ -160,7 +160,8 @@ test('real HTTP server smoke (isolated data, no TIA/MCP)', { timeout: 30000 }, a
     assert.equal(seen.authorization, undefined);
     assert.equal((await request('/api/status')).json().busy, true);
     assert.equal((await request('/api/config', 'PUT', { temperature: 0.2 })).status, 409);
-    assert.equal((await request(`/api/conversations/${conversation.id}`, 'DELETE')).status, 409);
+    const runningConversation = (await request(`/api/conversations/${conversation.id}`)).json();
+    assert.equal((await request(`/api/conversations/${conversation.id}?revision=${runningConversation.revision}`, 'DELETE')).status, 409);
     assert.equal((await request('/api/chat', 'POST', { conversationId: conversation.id, message: 'second', mode: 'read' })).status, 409);
     assert.equal((await request('/api/chat/cancel', 'POST', {})).status, 200);
     const events = (await chat).text.trim().split('\n').map(line => JSON.parse(line));

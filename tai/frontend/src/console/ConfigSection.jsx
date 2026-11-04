@@ -2,6 +2,8 @@ import { useEffect, useMemo, useState } from 'react';
 import { CircleCheck, KeyRound, LoaderCircle, RotateCcw, Save, TriangleAlert, Zap } from 'lucide-react';
 import { api } from '../api.js';
 import { buildConfigBody, changedKeys, endpointPreview, MCP_KEYS, PRESET_URL, toForm, validateForm } from '../lib/configForm.js';
+import ModelInput, { useModelCatalog } from '../components/ModelInput.jsx';
+import { REASONING_OPTIONS } from '../lib/taskOptions.js';
 import { cx } from '../utils.js';
 
 function Field({ label, error, hint, children, wide }) {
@@ -16,6 +18,7 @@ function Field({ label, error, hint, children, wide }) {
 
 /** 模型与 TIA/MCP 配置（GET/PUT /api/config，POST /api/model/test）。 */
 export default function ConfigSection({ busy, onSaved }) {
+  const models = useModelCatalog();
   const [config, setConfig] = useState(null);
   const [form, setForm] = useState(null);
   const [apiKey, setApiKey] = useState('');
@@ -30,7 +33,7 @@ export default function ConfigSection({ busy, onSaved }) {
     setLoadErr('');
     try {
       const c = await api.getConfig();
-      setConfig(c);
+      setConfig(c); models.configure(c);
       setForm(toForm(c));
       setApiKey('');
       setClearKey(false);
@@ -71,7 +74,7 @@ export default function ConfigSection({ busy, onSaved }) {
     setMsg(null);
     try {
       const c = await api.putConfig(buildConfigBody(form, { apiKey, clearKey }));
-      setConfig(c);
+      setConfig(c); models.configure(c);
       setForm(toForm(c));
       setApiKey('');
       setClearKey(false);
@@ -156,7 +159,10 @@ export default function ConfigSection({ busy, onSaved }) {
             <input value={form.baseUrl} onChange={set('baseUrl')} spellCheck={false} placeholder={PRESET_URL[form.provider]} />
           </Field>
           <Field label="模型名称" hint={!form.model.trim() ? '未填写模型名称时助手无法执行任务' : undefined} wide>
-            <input value={form.model} onChange={set('model')} spellCheck={false} placeholder={form.provider === 'anthropic' ? '例如 claude-sonnet-4-5' : '例如 gpt-4.1'} />
+            <ModelInput id="default-model" label="默认模型" value={form.model} onChange={set('model')} {...models} contextChanged={changed.some(k => ['provider', 'baseUrl'].includes(k)) || Boolean(apiKey.trim()) || clearKey} placeholder={form.provider === 'anthropic' ? '例如 claude-sonnet-4-5' : '例如 gpt-4.1'} />
+          </Field>
+          <Field label="思考程度" error={showErr('reasoningEffort')} hint="模型默认不附思考参数；当前协议或模型不支持所选程度时，服务会返回错误，不会静默降级。" wide>
+            <select aria-label="默认思考程度" value={form.reasoningEffort} onChange={set('reasoningEffort')}>{REASONING_OPTIONS.map(([id, label]) => <option key={id} value={id}>{label}</option>)}</select>
           </Field>
           <Field label="API Key" wide hint={config.hasApiKey ? '已保存密钥；留空表示保留不变' : '尚未保存密钥'}>
             <div className="row gap">

@@ -1,7 +1,8 @@
 [CmdletBinding()]
-param([string]$SetupExe = (Join-Path (Split-Path $PSScriptRoot -Parent) 'dist\TAI-Setup-V19-V21-0.10.0.exe'))
+param([string]$SetupExe)
 $ErrorActionPreference = 'Stop'
 Set-StrictMode -Version Latest
+if (!$SetupExe) { $SetupExe = Join-Path (Split-Path $PSScriptRoot -Parent) 'dist\TAI-Setup-V19-V21-0.11.0.exe' }
 # Offline lifecycle test: never execute Setup.exe, Desktop, TIA or MCP; never register.
 $SetupExe = (Resolve-Path -LiteralPath $SetupExe).Path
 $base = Join-Path $PSScriptRoot ('test-runs\offline-' + [Guid]::NewGuid().ToString('N'))
@@ -17,6 +18,7 @@ function Hash-Equals([string]$Path, [string]$Expected) {
  Check ((Get-FileHash -LiteralPath $Path -Algorithm SHA256).Hash -eq $Expected) "Hash mismatch: $Path"
 }
 $success = $false
+$upgradeDummy = $null
 try {
  $assembly = [Reflection.Assembly]::LoadFile($SetupExe)
  $resourceNames = @($assembly.GetManifestResourceNames())
@@ -32,7 +34,7 @@ try {
  $manifestPath = Join-Path $payload 'manifest.json'
  $manifest = Read-Json $manifestPath
  Copy-Item -LiteralPath $manifestPath -Destination (Join-Path $base 'manifest.original.json')
- Check ($manifest.product -eq 'TAI.UserLocal.1' -and $manifest.version -eq '0.10.0') 'Wrong manifest product/version'
+ Check ($manifest.product -eq 'TAI.UserLocal.1' -and $manifest.version -eq '0.11.0') 'Wrong manifest product/version'
  Check ((@($manifest.tiaVersions | Sort-Object) -join ',') -eq '19,21') 'Wrong backend version matrix'
  Check ((@($manifest.addInVersions) -join ',') -eq '21') 'Expected published AddIn only for V21'
  . (Join-Path $extracted 'Common.ps1')
@@ -57,7 +59,7 @@ try {
  Check ($unlisted.Count -eq 0) 'Payload contains unlisted files'
  Save-Json $originalHashes 'original-hashes.json'
  $package = Read-Json (Join-Path $payload 'app\package.json')
- Check ($package.version -eq '0.10.0') 'Wrong packaged app version'
+ Check ($package.version -eq '0.11.0') 'Wrong packaged app version'
  Check ($package.repository.url -eq 'https://github.com/joahpass/TAI.git') 'Wrong packaged repository'
  Check (Test-Path -LiteralPath (Join-Path $payload 'app\server\updates.mjs') -PathType Leaf) 'Updater missing'
  $siemens = @(Get-ChildItem -LiteralPath $payload -Recurse -File -Filter 'Siemens*.dll')
@@ -110,11 +112,32 @@ console.log(JSON.stringify(report));
  foreach ($scenario in @(@{label='fresh-v19';v=19},@{label='upgrade-v19-to-v21';v=21},@{label='switch-v21-to-v19';v=19})) {
   $v = $scenario.v
   $add = Join-Path $base "UserAddIns-V$v"
+  if ($scenario.label -eq 'upgrade-v19-to-v21') {
+   $idleScript = Join-Path $base 'idle-upgrade-fixture.cjs'
+   [IO.File]::WriteAllText($idleScript, 'setInterval(() => {}, 1000);', (New-Object System.Text.UTF8Encoding($false)))
+   $upgradeDummy = Start-Process -FilePath (Join-Path $installRoot 'runtime\node.exe') -ArgumentList ('"'+$idleScript+'"') -WindowStyle Hidden -PassThru
+   Start-Sleep -Milliseconds 300
+   Check (!$upgradeDummy.HasExited) 'Isolated upgrade dummy did not start'
+   $corruptPath = Join-Path $payload 'app\server\index.mjs'
+   $originalBytes = [IO.File]::ReadAllBytes($corruptPath)
+   $blocked = $false
+   try {
+    [IO.File]::AppendAllText($corruptPath, '// corrupted offline fixture')
+    try { & (Join-Path $extracted 'Install.ps1') -PayloadRoot $payload -NoRegistration -InstallRoot $installRoot -AddInRoot $add -TiaVersion $v -TiaLocation $portals[$v] }
+    catch { $blocked = $_.Exception.Message -like 'Managed file missing or modified*' }
+    Check ($blocked -and !$upgradeDummy.HasExited) 'Invalid payload did not preserve the running isolated old backend'
+   } finally { [IO.File]::WriteAllBytes($corruptPath, $originalBytes) }
+   $results.Add([pscustomobject]@{test='invalid-payload-preserves-running-backend';passed=$true})
+  }
   & (Join-Path $extracted 'Install.ps1') -PayloadRoot $payload -NoRegistration -InstallRoot $installRoot -AddInRoot $add -TiaVersion $v -TiaLocation $portals[$v]
+  if ($scenario.label -eq 'upgrade-v19-to-v21') {
+   Check ($upgradeDummy.WaitForExit(3000)) 'Installer left the isolated old backend running'
+   $results.Add([pscustomobject]@{test='upgrade-automatically-stops-old-backend';passed=$true;fixtureProcessId=$upgradeDummy.Id})
+  }
   $markerPath = Join-Path $installRoot '.tai-install.json'
   $marker = Read-Json $markerPath
   Check ($marker.tiaVersion -eq $v -and $marker.tiaLocation -eq $portals[$v]) 'Wrong selected TIA version/location'
-  Check ($marker.version -eq '0.10.0' -and !$marker.registered -and !$marker.shortcut) 'Wrong install ownership/registration state'
+  Check ($marker.version -eq '0.11.0' -and !$marker.registered -and !$marker.shortcut) 'Wrong install ownership/registration state'
   Check ($marker.addInRoot -eq $add) 'Wrong isolated AddIn root'
   foreach ($f in $marker.files) { Hash-Equals (Get-OwnedPath $installRoot $f.path) $f.sha256 }
   $runtime = Read-Json (Join-Path $installRoot 'tia-runtime.json')
@@ -153,6 +176,7 @@ console.log(JSON.stringify(report));
  $results.Add([pscustomobject]@{test='failure';passed=$false;message=$_.Exception.Message;detail=$_.ToString();stack=$_.ScriptStackTrace})
  throw
 } finally {
+ if ($upgradeDummy -and !$upgradeDummy.HasExited) { $upgradeDummy.Kill(); $null=$upgradeDummy.WaitForExit(3000) }
  $finalExeHash = (Get-FileHash -LiteralPath $SetupExe -Algorithm SHA256).Hash
  $unchanged = $originalExeHash -eq $finalExeHash
  Save-Json ([ordered]@{passed=($success -and $unchanged);setupExe=$SetupExe;setupSha256Before=$originalExeHash;setupSha256After=$finalExeHash;productionExeUnchanged=$unchanged;evidence=$base;mode='offline-extracted-fixture-no-registration';results=@($results.ToArray())}) 'results.json'

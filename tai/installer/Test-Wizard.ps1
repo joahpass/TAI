@@ -1,4 +1,4 @@
-param([Parameter(Mandatory=$true)][string]$SetupExe)
+﻿param([Parameter(Mandatory=$true)][string]$SetupExe)
 $ErrorActionPreference='Stop'
 Add-Type -AssemblyName System.Windows.Forms,System.Drawing
 $a=[Reflection.Assembly]::LoadFrom((Resolve-Path $SetupExe).Path)
@@ -56,10 +56,23 @@ try {
  $next.PerformClick();Check ((Field 'page') -eq 1) 'Returning to Options failed'
  $t.GetField('running',$fields).SetValue($f,$true);Invoke-Form 'ShowPage' @([int]2)
  Check (!$next.Enabled -and !$close.Enabled -and !$back.Visible) 'Running navigation must be disabled'
+ $phases=$t.GetField('phases',$fields).GetValue($f)
+ Invoke-Form 'Report' @('TAI_PROGRESS|12|正在检测安装环境')
+ Check ($phases[0].Text.StartsWith([char]0x2192)) 'Preparation phase completed before preparation finished'
  Invoke-Form 'Report' @('TAI_PROGRESS|48|正在安装 TAI 文件')
  Check ((Field 'progress').Value -eq 48) 'Progress protocol failed'
  Invoke-Form 'Report' @('TAI_PROGRESS|12|旧阶段')
  Check ((Field 'progress').Value -eq 48) 'Progress moved backwards'
+ Check ((Field 'status').Text -eq '正在安装 TAI 文件') 'Stale progress changed the current status'
+ $phases=$t.GetField('phases',$fields).GetValue($f)
+ Check ($phases[0].Text -like '*准备安装文件' -and $phases[0].Text.StartsWith([char]0x2713)) 'Completed phase not marked'
+ Check ($phases[1].Text -like '*关闭正在运行的 TAI' -and $phases[1].Text.StartsWith([char]0x2713)) 'Auto-close phase missing from progress list'
+ Check ($phases[2].Text.StartsWith([char]0x2192)) 'Current phase not highlighted'
+ Check (!($phases[3].Text.Contains([string][char]0x2713))) 'Unreached phase marked complete'
+ Check ((Field 'percent').Text -eq '48%') 'Percent label did not follow progress'
+ Invoke-Form 'Report' @('TAI_PROGRESS|50|正在复制程序文件')
+ Check ($phases[2].Text.StartsWith([char]0x2192)) 'Copy phase completed before copying finished'
+ Check (!($phases[3].Text.Contains([string][char]0x2713))) 'Integration completed during copying'
  Capture 'installer-progress-preview.png'
  Invoke-Form 'CompleteInstall' @([int]1)
  Check ((Field 'page') -eq 3 -and $back.Visible -and $close.Enabled) 'Failure retry controls missing'

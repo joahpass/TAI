@@ -1,6 +1,7 @@
 // 配置表单：与 server/store.mjs validateConfig 的规则保持一致，在提交前给出字段级错误。
 // 工具调用轮数不在界面配置：后端始终不限轮数（maxSteps 0），请求体不发送 maxSteps。
 
+import { REASONING_OPTIONS } from './taskOptions.js';
 export const PRESET_URL = { openai: 'https://api.openai.com/v1', anthropic: 'https://api.anthropic.com' };
 
 export const MCP_KEYS = ['mcpPath', 'tiaLocation', 'tiaVersion'];
@@ -10,18 +11,20 @@ const NUMBERS = [
   ['maxTokens', 128, 65536, true, '最大输出 Token'],
   ['tiaVersion', 19, 30, true, 'TIA 主版本'],
 ];
-export const FORM_KEYS = [...TEXT_KEYS, ...NUMBERS.map((n) => n[0])];
+export const FORM_KEYS = [...TEXT_KEYS, 'reasoningEffort', ...NUMBERS.map((n) => n[0])];
 
 /** 公共配置 → 表单（数字字段以字符串编辑）。 */
 export function toForm(config) {
   const form = {};
   for (const k of TEXT_KEYS) form[k] = String(config?.[k] ?? '');
   for (const [k] of NUMBERS) form[k] = config?.[k] === undefined || config?.[k] === null ? '' : String(config[k]);
+  form.reasoningEffort = config?.reasoningEffort ?? 'auto';
   return form;
 }
 
 export function validateForm(form) {
   const errors = {};
+  if (!REASONING_OPTIONS.some(([id]) => id === form.reasoningEffort)) errors.reasoningEffort = '请选择思考程度';
   if (!['openai', 'anthropic'].includes(form.provider)) errors.provider = '请选择模型协议';
   try {
     const u = new URL(String(form.baseUrl).trim());
@@ -47,6 +50,7 @@ export function buildConfigBody(form, { apiKey = '', clearKey = false } = {}) {
   const body = {};
   for (const k of TEXT_KEYS) body[k] = String(form[k] ?? '').trim();
   for (const [k] of NUMBERS) body[k] = Number(String(form[k]).trim());
+  body.reasoningEffort = form.reasoningEffort ?? 'auto';
   if (clearKey) body.clearApiKey = true;
   else if (String(apiKey).trim()) body.apiKey = String(apiKey).trim();
   return body;

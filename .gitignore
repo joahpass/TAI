@@ -18,6 +18,7 @@
 !/tai/tia-addin/
 !/tai/tests/
 !/tai/TAI-workspace-preview.png
+!/tai/TAI-workspace-home-preview.png
 !/tai/TAI-workspace-dark-preview.png
 !/tai/TAI-assistant-workspace-preview.png
 
@@ -66,6 +67,7 @@
 
 # Reviewed UI previews only.
 !/tai/TAI-workspace-preview.png
+!/tai/TAI-workspace-home-preview.png
 !/tai/TAI-workspace-dark-preview.png
 !/tai/TAI-assistant-workspace-preview.png
 !/tai/installer/installer-preview.png

@@ -2,12 +2,15 @@ import fs from 'node:fs/promises';
 import path from 'node:path';
 import { randomUUID } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
+import { validateEffort, validateModel } from './chat-options.mjs';
 import { assertTiaVersion, defaultTiaConfig } from './tia-version.mjs';
 const developmentMcpPath = fileURLToPath(new URL('../../mcp-v21/bin/V19/Release/net48/TiaMcpServer.exe', import.meta.url));
-export const defaults = { provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: '', apiKey: '', temperature: 0.2, maxTokens: 4096, maxSteps: 0, systemPrompt: '', mcpPath: process.env.TAI_MCP_PATH || developmentMcpPath, ...defaultTiaConfig() };
+export const defaults = { provider: 'openai', baseUrl: 'https://api.openai.com/v1', model: '', reasoningEffort: 'auto', apiKey: '', temperature: 0.2, maxTokens: 4096, maxSteps: 0, systemPrompt: '', mcpPath: process.env.TAI_MCP_PATH || developmentMcpPath, ...defaultTiaConfig() };
 export function validateConfig(input, current) {
   const out = { ...current };
   for (const key of ['provider','baseUrl','model','mcpPath','tiaLocation']) if (input[key] !== undefined) { if (typeof input[key] !== 'string') throw new Error(`${key} 必须为字符串`); out[key] = input[key].trim(); }
+  if(input.model!==undefined) validateModel(input.model,{allowEmpty:true});
+  out.reasoningEffort=validateEffort(input.reasoningEffort===undefined?(out.reasoningEffort??'auto'):input.reasoningEffort);
   if (!['openai', 'anthropic'].includes(out.provider)) throw new Error('不支持的模型协议');
   const url = new URL(out.baseUrl);
   if (!['http:', 'https:'].includes(url.protocol) || url.username || url.password || url.search || url.hash) throw new Error('模型地址必须为有效的 HTTP(S) 基础地址');
@@ -47,6 +50,12 @@ export class Store {
       try { await fs.copyFile(path.join(this.directory,'conversations.json'), path.join(this.directory,'conversations.pre-projects.json'), 1); }
       catch(error) { if(error.code !== 'EEXIST') throw error; }
     }
+    const legacyProjects = this.projects.some(p => p.instructions === undefined);
+    if (legacyProjects) {
+      try { await fs.copyFile(path.join(this.directory,'projects.json'), path.join(this.directory,'projects.pre-instructions.json'), 1); }
+      catch(error) { if(error.code !== 'EEXIST') throw error; }
+      for (const p of this.projects) p.instructions ??= '';
+    }
     if (!this.projects.some(p => p.id === 'default')) this.projects.unshift(this.projectRecord('default','默认项目'));
     for (const c of this.conversations) {
       if (!c.projectId) { c.projectId='default'; c.artifactDirectory ??= path.join(this.directory,'artifacts'); }
@@ -65,15 +74,15 @@ export class Store {
     this.writes.set(key, pending);
     return pending;
   }
-  projectRecord(id,name) { const now=new Date().toISOString(); return {id,name,description:'',tiaProjectPath:null,createdAt:now,updatedAt:now,archivedAt:null,revision:1}; }
+  projectRecord(id,name) { const now=new Date().toISOString(); return {id,name,description:'',instructions:'',tiaProjectPath:null,createdAt:now,updatedAt:now,archivedAt:null,revision:1}; }
   project(id) { const p=this.projects.find(p=>p.id===id); if(!p) throw new Error('项目不存在'); return p; }
   createProject(input={}) { const p=this.projectRecord(randomUUID(),'新项目'); applyProject(p,input); this.projects.push(p); return p; }
   updateProject(id,input) { const p=this.project(id); checkRevision(p,input); const next={...p}; applyProject(next,input); Object.assign(p,next,{revision:p.revision+1,updatedAt:new Date().toISOString()}); return p; }
-  create(title = '新对话', projectId = 'default') { this.project(projectId); const now=new Date().toISOString(); const c = { id: randomUUID(), projectId, title: String(title).slice(0,80), pinned:false, archivedAt:null, revision:1, createdAt:now, updatedAt:now, messages: [] }; this.conversations.unshift(c); return c; }
+  create(title = '新对话', projectId = 'default') { assertUnarchived(this.project(projectId),'项目'); const now=new Date().toISOString(); const c = { id: randomUUID(), projectId, title: String(title).slice(0,80), pinned:false, archivedAt:null, revision:1, createdAt:now, updatedAt:now, messages: [] }; this.conversations.unshift(c); return c; }
   update(id,input) {
     const c=this.get(id); checkRevision(c,input); const next={...c};
     if(input.title!==undefined) next.title=text(input.title,'title',80);
-    if(input.projectId!==undefined) { this.project(input.projectId); if(input.projectId!==c.projectId) next.artifactDirectory=this.artifactDirectory(c); next.projectId=input.projectId; }
+    if(input.projectId!==undefined) { assertUnarchived(this.project(input.projectId),'目标项目'); if(input.projectId!==c.projectId) next.artifactDirectory=this.artifactDirectory(c); next.projectId=input.projectId; }
     if(input.pinned!==undefined) { if(typeof input.pinned!=='boolean') throw new Error('pinned 必须为布尔值'); next.pinned=input.pinned; }
     if(input.archivedAt!==undefined) next.archivedAt=archiveDate(input.archivedAt);
     Object.assign(c,next,{revision:c.revision+1,updatedAt:new Date().toISOString()}); return c;
@@ -81,6 +90,7 @@ export class Store {
   artifactDirectory(c) { return c.artifactDirectory || path.join(this.directory,'projects',c.projectId,'designs',c.id); }
   get(id) { const c = this.conversations.find(c => c.id === id); if (!c) throw new Error('会话不存在'); return c; }
 }
+export function assertUnarchived(record,label) { if(record.archivedAt) throw conflict(`${label}已归档，请先恢复`); }
 export function conflict(message='revision 冲突，请重新加载') { const error=new Error(message); error.status=409; return error; }
 export function checkRevision(record,input) { if(!Number.isInteger(input.revision) || input.revision!==record.revision) throw conflict(); }
 function text(value,name,max) { if(typeof value!=='string'||!value.trim()||value.length>max) throw new Error(`${name} 必须为 1–${max} 字符文本`); return value.trim(); }
@@ -88,6 +98,7 @@ function archiveDate(value) { if(value===null) return null; if(typeof value!=='s
 function applyProject(p,input) {
   if(input.name!==undefined) p.name=text(input.name,'name',80);
   if(input.description!==undefined) { if(typeof input.description!=='string'||input.description.length>4000) throw new Error('description 最多 4000 字符'); p.description=input.description; }
+  if(input.instructions!==undefined) { if(typeof input.instructions!=='string'||input.instructions.length>20000||input.instructions.includes('\0')) throw new Error('instructions 必须为最多 20000 字符且不含 NUL 的文本'); p.instructions=input.instructions; }
   if(input.archivedAt!==undefined) p.archivedAt=archiveDate(input.archivedAt);
   if(input.tiaProjectPath!==undefined) { if(input.tiaProjectPath!==null && (typeof input.tiaProjectPath!=='string'||!input.tiaProjectPath.trim())) throw new Error('tiaProjectPath 必须为路径或 null'); p.tiaProjectPath=input.tiaProjectPath?.trim() ?? null; }
 }

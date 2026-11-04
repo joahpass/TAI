@@ -330,6 +330,9 @@ a.icon-btn { text-decoration: none; }
 /* ============ / 配置与诊断控制台 ============ */
 .cs-app { min-height: 100%; display: flex; flex-direction: column; }
 .cs-head { display: flex; align-items: center; gap: 12px; padding: 12px 20px; border-bottom: 1px solid var(--line); background: var(--bg2); position: sticky; top: 0; z-index: 5; }
+.cs-brand { display: flex; align-items: baseline; gap: 8px; }
+.cs-brand strong { font-size: 14px; font-weight: 650; letter-spacing: 0.4px; }
+.cs-brand span { font-size: 12px; color: var(--muted); }
 .cs-main { flex: 1; display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, 1fr); gap: 16px; padding: 16px 20px 24px; max-width: 1280px; width: 100%; margin: 0 auto; align-items: start; }
 .cs-col { display: flex; flex-direction: column; gap: 16px; min-width: 0; }
 .cs-card { padding: 14px; gap: 12px; background: var(--bg2); }
@@ -339,7 +342,7 @@ a.icon-btn { text-decoration: none; }
 .cs-actions { flex-wrap: wrap; }
 .cs-kvs { display: flex; flex-direction: column; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); }
 .cs-kv { display: flex; gap: 12px; padding: 6px 10px; font-size: 13px; }
-.cs-kv + .cs-kv { border-top: 1px solid #1f2a31; }
+.cs-kv + .cs-kv { border-top: 1px solid var(--line); }
 .cs-kv > .muted { width: 76px; flex: none; }
 .cs-kv-v { flex: 1; min-width: 0; word-break: break-all; }
 .cs-out { display: flex; flex-direction: column; gap: 6px; border-top: 1px solid var(--line); padding-top: 10px; }

@@ -1,5 +1,5 @@
 [CmdletBinding()]
-param([string]$DesktopDir,[string]$AddInDir,[string]$NodePath,[string]$McpV19Dir,[string]$Version='0.10.0')
+param([string]$DesktopDir,[string]$AddInDir,[string]$NodePath,[string]$McpV19Dir,[string]$Version='0.11.0')
 Set-StrictMode -Version Latest
 $ErrorActionPreference='Stop'
 $tai=Split-Path $PSScriptRoot -Parent

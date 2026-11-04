@@ -4,6 +4,7 @@ import Markdown from '../components/Markdown.jsx';
 import ToolCall from '../components/ToolCall.jsx';
 import { CopyButton } from '../components/ResultView.jsx';
 import { cx, formatFullTime, MODE_INFO, normalizePersistedTool } from '../utils.js';
+import { reasoningLabel } from '../lib/taskOptions.js';
 import { toolStats } from '../lib/chatState.js';
 import { projectChanges } from '../lib/toolLabels.js';
 
@@ -80,6 +81,12 @@ function Changes({ tools }) {
   );
 }
 
+function RunConfig({ msg }) {
+  const config = msg.taskConfig || msg;
+  if (!config.model) return null;
+  return <div className="wk-run-config" aria-label="任务模型配置">{config.provider ? `${config.provider} / ` : ''}{config.model}{config.reasoningEffort ? ` · 思考：${reasoningLabel(config.reasoningEffort)}` : ''}</div>;
+}
+
 function AssistantMessage({ msg, live, onCancel, cancelling }) {
   const tools = normTools(msg.tools);
   return (
@@ -89,6 +96,7 @@ function AssistantMessage({ msg, live, onCancel, cancelling }) {
         {msg.createdAt && <span className="muted">{formatFullTime(msg.createdAt)}</span>}
         {!live && msg.content && <CopyButton text={msg.content} className="msg-copy" />}
       </div>
+      <RunConfig msg={msg} />
       <ToolList tools={tools} live={live} />
       {msg.content ? <Markdown text={msg.content} /> : null}
       {live && !msg.done && !msg.error && <Progress draft={msg} onCancel={onCancel} cancelling={cancelling} />}
@@ -109,8 +117,9 @@ function UserMessage({ msg }) {
       <div className="as-meta">
         <span className="strong">任务</span>
         {msg.createdAt && <span className="muted">{formatFullTime(msg.createdAt)}</span>}
-        {msg.mode && <span className={cx('tag', msg.mode === 'write' ? 'tag-warn' : 'tag-info')}>{MODE_INFO[msg.mode].label}</span>}
+        {msg.mode && <span className={cx('tag', msg.mode === 'write' ? 'tag-warn' : 'tag-info')}>{MODE_INFO[msg.mode]?.label || msg.mode}</span>}
       </div>
+      <RunConfig msg={msg} />
       <div className="user-text">{msg.content}</div>
     </div>
   );

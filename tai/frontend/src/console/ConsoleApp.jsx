@@ -19,17 +19,13 @@ export default function ConsoleApp() {
   return (
     <div className="cs-app">
       <header className="cs-head">
-        <div className="logo">T</div>
-        <div>
-          <div className="strong">TAI 配置与诊断</div>
-          <div className="small muted">模型设置、博途 / MCP 连接状态与工具调试。</div>
-        </div>
-        <a className="btn btn-sm" href="/workspace">打开设计工作台</a>
+        <div className="cs-brand"><strong>TAI</strong><span>配置与诊断</span></div>
         <span className="spacer" />
         <span className={cx('chip', offline ? 'chip-off' : connected ? 'chip-ok' : 'chip-warn')}>
           <span className={cx('dot', offline ? 'dot-off' : connected ? 'dot-ok' : 'dot-warn')} />
           {offline ? '服务离线' : connected ? '博途已连接' : '博途未连接'}
         </span>
+        <a className="btn btn-sm" href="/workspace">打开设计工作台</a>
       </header>
       <main className="cs-main">
         <div className="cs-col">

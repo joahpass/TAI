@@ -1,6 +1,6 @@
 # TAI 工程助手
 
-TAI 是 Windows 本地 TIA Portal V19 / V21 工程助手，提供多项目、多设计标签、工程上下文管理及 PLC / HMI 工具。
+TAI 是 Windows 本地 TIA Portal V19 / V21 工程助手，以 Agent 式工作区组织目标、共用指令、博途工程绑定和独立对话，提供多标签开发、模型与思考程度选择及 PLC / HMI 工具。
 
 [下载安装包](https://github.com/joahpass/TAI/releases/latest) · [工作台说明](tai/WORKSPACE.md)
 
@@ -10,7 +10,7 @@ TAI 是 Windows 本地 TIA Portal V19 / V21 工程助手，提供多项目、多
 
 从 Releases 下载安装 EXE。需要 Windows x64、.NET Framework 4.8、WebView2 Runtime 和匹配版本的 TIA Portal Openness。
 
-向导包括欢迎、安装选项、安装进度和完成页面。默认选择本机已安装且具有匹配 Openness 组件的最高支持版本，V21 优先于 V19；也可手动指定。升级沿用原安装目录。安装前退出 TAI 托盘集成并关闭 TAI 窗口。
+向导包括环境检测、安装选项、安装进度和完成页面。默认选择本机已安装且具有匹配 Openness 组件的最高支持版本，V21 优先于 V19；也可手动指定。升级沿用原安装目录，校验完成后自动关闭该目录的旧版 TAI 进程；任务运行中或状态读取异常时保留任务，提示稍后重试。配置、对话和工件保留。
 
 安装完成可直接启动工作台。模型接口在“设置”中配置；配置与会话默认保存在当前用户的 `%LOCALAPPDATA%\TAI`，卸载保留用户数据。
 
@@ -46,7 +46,7 @@ bash build-release.sh --online
 参见 [桌面构建说明](tai/desktop/RELEASE.txt) 和 [V21 AddIn 构建脚本](tai/tia-addin/build.ps1)。准备好两版 MCP、AddIn、前端构建及 Node 后：
 
 ```powershell
-pwsh -NoProfile -File tai/installer/Build.ps1 -DesktopDir <desktop-release-dir> -Version 0.10.0
+pwsh -NoProfile -File tai/installer/Build.ps1 -DesktopDir <desktop-release-dir> -Version 0.11.0
 ```
 
 产物输出至 `tai/dist`。
@@ -63,7 +63,7 @@ pwsh -NoProfile -File tai/installer/Build.ps1 -DesktopDir <desktop-release-dir> 
 
 通用版采用一个安装包、统一版本资料与分代适配器。安装器、服务端和设置页共用版本 manifest，记录 SDK 布局、程序集身份、后端路径、工具能力与验证等级。自动选择顺序为：发现全部安装版本 → 匹配包内适配器与 SDK 契约 → 选择最高匹配版本；更高版本缺适配器时显示具体原因，并继续考虑较低匹配版本。
 
-当前 0.10.0 的适配器为 V19 / V21。后续 V17、V18、V20 作为候选，不把版本号放开等同于支持。V19 反射桥适合抽为按版本参数化的旧版适配器，需同步参数化程序集身份、组件及工程扩展名；V21 使用拆分 SDK，保留独立映射。V20 需要先核对真实 SDK 布局，当前安装器与解析器对其目录代际的判断存在差异。
+当前 0.11.0 的适配器为 V19 / V21。后续 V17、V18、V20 作为候选，不把版本号放开等同于支持。V19 反射桥适合抽为按版本参数化的旧版适配器，需同步参数化程序集身份、组件及工程扩展名；V21 使用拆分 SDK，保留独立映射。V20 需要先核对真实 SDK 布局，当前安装器与解析器对其目录代际的判断存在差异。
 
 通用版将分别显示“检测到安装”“适配器已提供”“SDK 契约通过”“协议通过”“指定工具工程实测通过”。离线矩阵覆盖 17/18/19/20/21 与未知未来版本的共存、缺适配器、SDK 错配及自动回退；再逐版验证真实 SDK 和一次性工程。新版本以新增 profile 扩展，避免在各处维护两项版本数组。
 

@@ -1,6 +1,6 @@
 {
   "name": "tai-local-assistant",
-  "version": "0.10.0",
+  "version": "0.11.0",
   "private": true,
   "type": "module",
   "description": "TAI local engineering workspace for Siemens TIA Portal V19 and V21",

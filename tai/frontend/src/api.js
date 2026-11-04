@@ -76,6 +76,7 @@ const enc = encodeURIComponent;
 export const api = {
   status: () => request('GET', '/api/status', undefined, { timeoutMs: 6000 }),
   updates: (refresh = false) => request('GET', '/api/updates' + (refresh ? '?refresh=1' : ''), undefined, { timeoutMs: 12000 }),
+  models: (refresh = false) => request('GET', '/api/models' + (refresh ? '?refresh=1' : ''), undefined, { timeoutMs: 20000 }),
   getConfig: () => request('GET', '/api/config'),
   putConfig: (config) => request('PUT', '/api/config', config),
   getPrompts: () => request('GET', '/api/prompts'),
@@ -93,7 +94,8 @@ export const api = {
   createConversation: (title, projectId) => request('POST', '/api/conversations', { ...(title ? { title } : {}), ...(projectId ? { projectId } : {}) }),
   updateConversation: (id, data) => request('PUT', `/api/conversations/${enc(id)}`, data),
   conversation: (id) => request('GET', `/api/conversations/${enc(id)}`),
-  deleteConversation: (id) => request('DELETE', `/api/conversations/${enc(id)}`),
+  deleteProject: (id, revision) => request('DELETE', `/api/projects/${enc(id)}?revision=${enc(revision)}`),
+  deleteConversation: (id, revision) => request('DELETE', `/api/conversations/${enc(id)}${revision === undefined ? '' : '?revision=' + enc(revision)}`),
   cancelChat: (taskId) => request('POST', '/api/chat/cancel', taskId ? { taskId } : {}),
 };
 
@@ -101,13 +103,13 @@ export const api = {
  * POST /api/chat，逐行回调 NDJSON 事件。
  * 抛出 ApiError（HTTP 错误，如 409 忙碌）、AbortError（本地中止）或网络错误。
  */
-export async function streamChat({ conversationId, message, mode }, { signal, onEvent, onInvalid }) {
+export async function streamChat({ conversationId, message, mode, model, reasoningEffort }, { signal, onEvent, onInvalid }) {
   let res;
   try {
     res = await fetch('/api/chat', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json', Accept: 'application/x-ndjson, application/json' },
-      body: JSON.stringify({ conversationId, message, mode }),
+      body: JSON.stringify({ conversationId, message, mode, ...(model?.trim() ? { model: model.trim() } : {}), ...(reasoningEffort ? { reasoningEffort } : {}) }),
       signal,
     });
   } catch (error) {

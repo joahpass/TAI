@@ -16,7 +16,6 @@ Write-Output 'TAI_PROGRESS|12|正在检测博途版本与目录'
 $tia = Get-TiaInstallation -Version $TiaVersion -Location $TiaLocation
 $TiaVersion = $tia.Version
 $TiaLocation = $tia.Location
-Assert-Stopped $InstallRoot
 $manifest = Get-Content -Raw -LiteralPath (Join-Path $PayloadRoot 'manifest.json') | ConvertFrom-Json
 if ($manifest.product -ne $script:ProductId) { throw 'Wrong payload product.' }
 if (!$manifest.PSObject.Properties['tiaVersions'] -or $TiaVersion -notin $manifest.tiaVersions) { throw "Payload does not contain a TIA V$TiaVersion MCP build." }
@@ -82,6 +81,13 @@ Write-Output 'TAI_PROGRESS|32|正在检查运行组件'
 Write-Output "Selected TIA V$TiaVersion at $TiaLocation. Checking bundled runtime before installation..."
 & (Join-Path $PayloadRoot 'runtime\node.exe') (Join-Path $PayloadRoot 'installer\verify-install.mjs') "$TiaVersion" $TiaLocation
 if ($LASTEXITCODE -ne 0) { throw 'Package preflight failed before installed files were changed. Check Openness user group and the log above.' }
+if ($old) {
+ Write-Output 'TAI_PROGRESS|42|正在关闭旧版 TAI，保留博途与用户数据'
+ Stop-TaiProcesses $InstallRoot
+} else {
+ Write-Output 'TAI_PROGRESS|42|正在准备安装目录'
+}
+Assert-Stopped $InstallRoot
 if ($old) {
  # Every old file already passed the hash check above, so remove without re-asserting a stale hash.
  foreach ($f in $old.files) { $p = Get-OwnedPath $InstallRoot $f.path; if (Test-Path -LiteralPath $p) { Remove-Item -LiteralPath $p -Force } }

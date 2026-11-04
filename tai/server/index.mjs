@@ -6,11 +6,13 @@ import os from 'node:os';
 import { fileURLToPath } from 'node:url';
 import { randomUUID } from 'node:crypto';
 import { verifyProjectContext } from './project-context.mjs';
-import { Store, conflict, checkRevision, publicConfig, validateConfig } from './store.mjs';
+import { Store, assertUnarchived, conflict, checkRevision, publicConfig, validateConfig } from './store.mjs';
 import { McpClient } from './mcp.mjs';
 import { completion } from './model.mjs';
 import { promptSettings } from './prompts.mjs';
-import { effect, runChat } from './agent.mjs';
+import { effect, runChat, permissionModes } from './agent.mjs';
+import { validateChatInput } from './chat-options.mjs';
+import { createModelDiscovery } from './models.mjs';
 import { createUpdateChecker } from './updates.mjs';
 const root=path.resolve(path.dirname(fileURLToPath(import.meta.url)),'..');
 const appMetadata=JSON.parse((await fs.readFile(path.join(root,'package.json'),'utf8')).replace(/^\uFEFF/,''));
@@ -19,6 +21,7 @@ export async function createTaiServer({directory=process.env.TAI_DATA_DIR || pat
 const store=new Store(directory);
 await store.init();
 const mcp=mcpClient;
+const discoverModels=createModelDiscovery();
 let active=null;
 const json=(res,status,value)=>{res.writeHead(status,{'Content-Type':'application/json; charset=utf-8','Cache-Control':'no-store'});res.end(JSON.stringify(value));};
 async function body(req) { const chunks=[]; let size=0; for await(const chunk of req) { size+=chunk.length; if(size>2_500_000) throw new Error('请求过大'); chunks.push(chunk); } const text=Buffer.concat(chunks).toString('utf8'); return text ? JSON.parse(text) : {}; }
@@ -35,7 +38,11 @@ const server=http.createServer(async(req,res)=>{
     if(req.headers['sec-fetch-site']==='cross-site') return json(res,403,{error:'拒绝跨站请求'});
     const url=new URL(req.url,`http://${host}`), p=url.pathname, method=req.method;
     if(p.startsWith('/api/') && ['POST','PUT','DELETE'].includes(method) && method!=='DELETE' && !req.headers['content-type']?.startsWith('application/json')) return json(res,415,{error:'请求必须使用 application/json'});
-    if(p==='/api/status') return json(res,200,{app:'TAI',version:appVersion,mcp:{running:Boolean(mcp.ready),connected:mcp.connected,toolCount:mcp.tools.length},model:{configured:Boolean(store.config.model),provider:store.config.provider,model:store.config.model},busy:Boolean(active),activeTask:publicTask()});
+    if(p==='/api/status') return json(res,200,{app:'TAI',version:appVersion,mcp:{running:Boolean(mcp.ready),connected:mcp.connected,toolCount:mcp.tools.length},model:{configured:Boolean(store.config.model),provider:store.config.provider,model:store.config.model,reasoningEffort:store.config.reasoningEffort},permissionModes,busy:Boolean(active),activeTask:publicTask()});
+    if(p==='/api/models' && method==='GET') {
+      if([...url.searchParams.keys()].some(k=>k!=='refresh') || (url.searchParams.has('refresh')&&url.searchParams.get('refresh')!=='1'))throw new Error('无效的模型列表参数');
+      return json(res,200,await discoverModels(store.config,{refresh:url.searchParams.get('refresh')==='1'}));
+    }
     if(p==='/api/updates' && method==='GET') return json(res,200,await updateChecker({refresh:url.searchParams.get('refresh')==='1'}));
     if(p==='/api/prompts' && method==='GET') return json(res,200,promptSettings(store.config));
     if(p==='/api/prompts' && method==='PUT') return json(res,200,await exclusive(async()=>{
@@ -50,7 +57,7 @@ const server=http.createServer(async(req,res)=>{
     if(p==='/api/config' && method==='PUT') return json(res,200,await exclusive(async()=>{const input=await body(req);const next=validateConfig(input,store.config);const changed=['mcpPath','tiaLocation','tiaVersion'].some(k=>next[k]!==store.config[k]);store.config=next;await store.save('config');if(changed)mcp.stop();return publicConfig(next);}));
     if(p==='/api/model/test' && method==='POST') return json(res,200,await exclusive(async signal=>{const r=await modelCompletion(store.config,[{role:'user',content:'请只回复：TAI 模型连接成功'}],[],signal);return {ok:true,text:r.content};},{kind:'model-test'}));
     if(p==='/api/chat/cancel' && method==='POST') {const data=await body(req);if(data.taskId!==undefined){if(!active||data.taskId!==active.taskId)throw conflict('任务已结束或 taskId 不匹配');active.controller.abort();}else if(active?.kind==='chat')active.controller.abort();return json(res,200,{ok:true});}
-    if(p==='/api/tools' && method==='GET') return json(res,200,await exclusive(async()=>{await mcp.start(store.config);return {tools:mcp.tools.map(t=>({...t,effect:effect(t.name)}))};}));
+    if(p==='/api/tools' && method==='GET') return json(res,200,await exclusive(async()=>{await mcp.start(store.config);return {permissionModes,tools:mcp.tools.map(t=>({...t,effect:effect(t.name)}))};}));
     if(p==='/api/tia/state' && method==='GET') return json(res,200,await exclusive(async()=>{await mcp.start(store.config);return mcp.call('GetState');}));
     if(['/api/tia/connect','/api/tia/disconnect','/api/tools/call'].includes(p) && method==='POST') return json(res,200,await exclusive(async()=>{
       const data=await body(req);await mcp.start(store.config);
@@ -68,12 +75,23 @@ const server=http.createServer(async(req,res)=>{
     const projectMatch=p.match(/^\/api\/projects\/([a-zA-Z0-9-]+)$/);
     if(projectMatch && method==='PUT') {
       const data=await body(req),project=store.project(projectMatch[1]);checkRevision(project,data);
+      if(data.archivedAt!==undefined && data.archivedAt!==null) assertProjectIdle(project.id);
       if(data.tiaProjectPath!==undefined) {
         assertProjectIdle(project.id);assertIdle();
         if(data.tiaProjectPath!==null) await exclusive(()=>verifyProjectContext(mcp,{tiaProjectPath:data.tiaProjectPath}),{projectId:project.id,kind:'binding'});
         assertProjectIdle(project.id);checkRevision(project,data);
       }
       const updated=store.updateProject(project.id,data);await store.save('projects');return json(res,200,updated);
+    }
+    if(projectMatch && method==='DELETE') {
+      const project=store.project(projectMatch[1]);assertProjectIdle(project.id);
+      checkRevision(project,{revision:Number(url.searchParams.get('revision'))});
+      if(project.id==='default')throw conflict('默认项目不可删除');
+      const conversationIds=store.conversations.filter(c=>c.projectId===project.id).map(c=>c.id);
+      store.projects=store.projects.filter(p=>p.id!==project.id);
+      store.conversations=store.conversations.filter(c=>c.projectId!==project.id);
+      await store.save('projects');await store.save('conversations');
+      return json(res,200,{ok:true,projectId:project.id,conversationIds});
     }
     if(p==='/api/conversations' && method==='GET') {
       let conversations=store.conversations;
@@ -90,23 +108,26 @@ const server=http.createServer(async(req,res)=>{
     if(match && method==='GET') return json(res,200,store.get(match[1]));
     if(match && method==='PUT') {
       const data=await body(req),c=store.get(match[1]);
+      if(data.archivedAt!==undefined && data.archivedAt!==null) assertConversationIdle(c.id);
       if(data.projectId!==undefined&&data.projectId!==c.projectId)assertConversationIdle(c.id);
       const updated=store.update(c.id,data);await store.save('conversations');return json(res,200,updated);
     }
-    if(match && method==='DELETE') {assertConversationIdle(match[1]);store.get(match[1]);store.conversations=store.conversations.filter(c=>c.id!==match[1]);await store.save('conversations');return json(res,200,{ok:true});}
+    if(match && method==='DELETE') {assertConversationIdle(match[1]);const c=store.get(match[1]);checkRevision(c,{revision:Number(url.searchParams.get('revision'))});store.conversations=store.conversations.filter(c=>c.id!==match[1]);await store.save('conversations');return json(res,200,{ok:true,conversationId:c.id});}
     if(p==='/api/chat' && method==='POST') {
       if(active)return json(res,409,{error:'另一个任务正在执行'});
       const data=await body(req);
-      if(typeof data.message!=='string' || !data.message.trim() || data.message.length>40000) throw new Error('请输入 1–40000 字符的消息');
-      if(!['read','write'].includes(data.mode))throw new Error('无效的工作模式');
+      const configSnapshot=validateChatInput(data,store.config);
+      const selection={model:configSnapshot.model,provider:configSnapshot.provider,reasoningEffort:configSnapshot.reasoningEffort,mode:data.mode};
       const conversation=store.get(data.conversationId);
       return await exclusive(async signal=>{
+        assertUnarchived(conversation,'会话');
+        assertUnarchived(store.project(conversation.projectId),'项目');
         res.writeHead(200,{'Content-Type':'application/x-ndjson; charset=utf-8','Cache-Control':'no-store','X-Content-Type-Options':'nosniff'});
         res.write(JSON.stringify({type:'task',...publicTask()})+'\n');
         const controller=active.controller;
         const close=()=>{if(!res.writableEnded)controller.abort();};res.on('close',close);
-        try{await runChat({store,mcp,conversation,project:store.project(conversation.projectId),modelCompletion,message:data.message.trim(),mode:data.mode,signal,artifactDirectory:store.artifactDirectory(conversation),emit:e=>{if(!res.destroyed)res.write(JSON.stringify(e)+'\n');}});}finally{res.off('close',close);res.end();}
-      },{conversationId:conversation.id,projectId:conversation.projectId,kind:'chat'});
+        try{await runChat({store,mcp,conversation,project:store.project(conversation.projectId),modelCompletion,configSnapshot,message:data.message.trim(),mode:data.mode,signal,artifactDirectory:store.artifactDirectory(conversation),emit:e=>{if(!res.destroyed)res.write(JSON.stringify(e)+'\n');}});}finally{res.off('close',close);res.end();}
+      },{conversationId:conversation.id,projectId:conversation.projectId,kind:'chat',...selection});
     }
     if(p.startsWith('/api/'))return json(res,404,{error:'接口不存在'});
     if(method!=='GET' && method!=='HEAD')return json(res,405,{error:'不支持此方法'});

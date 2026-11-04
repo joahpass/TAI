@@ -16,6 +16,8 @@ export function parseStep(message) {
 export function applyChatEvent(draft, ev) {
   if (!draft || !ev || typeof ev !== 'object') return draft;
   switch (ev.type) {
+    case 'task':
+      return { ...draft, model: ev.model, provider: ev.provider, reasoningEffort: ev.reasoningEffort, mode: ev.mode };
     case 'status':
       return { ...draft, status: String(ev.message ?? ''), step: parseStep(ev.message) ?? draft.step };
     case 'text': {
